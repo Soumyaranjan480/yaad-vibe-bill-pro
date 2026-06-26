@@ -74,7 +74,6 @@ interface Bill {
   customerName: string;
   mobile: string;
   bookingDate: string;
-  serviceDate: string;
   from: string;
   to: string;
   total: number;
