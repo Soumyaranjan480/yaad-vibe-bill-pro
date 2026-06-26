@@ -85,7 +85,6 @@ function Index() {
   const [customerName, setCustomerName] = useState("");
   const [mobile, setMobile] = useState("");
   const [bookingDate, setBookingDate] = useState(todayISO());
-  const [serviceDate, setServiceDate] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [total, setTotal] = useState("");
