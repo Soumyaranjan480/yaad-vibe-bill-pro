@@ -155,5 +155,42 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    background-image:
+      radial-gradient(at 20% 0%, oklch(0.85 0.08 60 / 0.35) 0px, transparent 50%),
+      radial-gradient(at 80% 100%, oklch(0.7 0.1 30 / 0.25) 0px, transparent 50%);
+    background-attachment: fixed;
   }
+}
+
+@utility surface-3d {
+  background: linear-gradient(180deg, oklch(1 0 0), oklch(0.97 0.012 85));
+  box-shadow: var(--shadow-3d);
+  border: 1px solid oklch(0.9 0.02 80);
+}
+
+@utility chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: oklch(0.95 0.025 80);
+  color: oklch(0.35 0.05 50);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media print {
+  body {
+    background: white !important;
+    background-image: none !important;
+  }
+  .no-print { display: none !important; }
+  .invoice-sheet {
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+  @page { margin: 12mm; size: A4; }
 }
