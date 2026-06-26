@@ -74,7 +74,6 @@ interface Bill {
   customerName: string;
   mobile: string;
   bookingDate: string;
-  serviceDate: string;
   from: string;
   to: string;
   total: number;
@@ -86,7 +85,6 @@ function Index() {
   const [customerName, setCustomerName] = useState("");
   const [mobile, setMobile] = useState("");
   const [bookingDate, setBookingDate] = useState(todayISO());
-  const [serviceDate, setServiceDate] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [total, setTotal] = useState("");
@@ -107,7 +105,7 @@ function Index() {
 
   const reset = () => {
     setCustomerName(""); setMobile(""); setBookingDate(todayISO());
-    setServiceDate(""); setFrom(""); setTo(""); setTotal(""); setAdvance("");
+    setFrom(""); setTo(""); setTotal(""); setAdvance("");
     setBill(null); setError("");
   };
 
@@ -126,7 +124,7 @@ function Index() {
       generatedAt: new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }),
       customerName: customerName.trim(),
       mobile: mobile.trim(),
-      bookingDate, serviceDate,
+      bookingDate,
       from: from.trim(), to: to.trim(),
       total: totalNum, advance: advanceNum, balance,
     });
@@ -217,12 +215,9 @@ function Index() {
               <Separator className="my-6" />
 
               <FieldGroup icon={<CalendarDays className="h-4 w-4" />} title="Schedule">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4">
                   <Field label="Booking Date">
                     <Input type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} />
-                  </Field>
-                  <Field label="Service Date">
-                    <Input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} />
                   </Field>
                 </div>
               </FieldGroup>
@@ -297,7 +292,6 @@ function Index() {
               <dl className="space-y-3 text-sm">
                 <Row k="Customer" v={customerName || "—"} />
                 <Row k="Mobile" v={mobile || "—"} />
-                <Row k="Service Date" v={formatDate(serviceDate)} />
                 <Row k="Route" v={from || to ? `${from || "—"} → ${to || "—"}` : "—"} />
                 <Separator />
                 <Row k="Total" v={formatINR(totalNum)} />
@@ -416,9 +410,6 @@ function Invoice({ bill }: { bill: Bill }) {
             </div>
             <div>
               <h1 className="text-3xl font-black tracking-[0.02em]">YAAD VIBRATOR</h1>
-              <p className="text-xs uppercase tracking-[0.28em] opacity-85">
-                Transport & Booking Services
-              </p>
               <p className="mt-1 text-xs opacity-80">Thalakudi, Mangalpur, Jajpur, Odisha</p>
             </div>
           </div>
@@ -436,10 +427,9 @@ function Invoice({ bill }: { bill: Bill }) {
       </div>
 
       {/* Meta strip */}
-      <div className="grid grid-cols-2 gap-4 border-b bg-muted/40 px-10 py-5 text-sm sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 border-b bg-muted/40 px-10 py-5 text-sm sm:grid-cols-3">
         <Meta k="Bill No." v={bill.billNo} mono />
         <Meta k="Booking Date" v={formatDate(bill.bookingDate)} />
-        <Meta k="Service Date" v={formatDate(bill.serviceDate)} />
         <Meta k="Issued" v={bill.generatedAt} />
       </div>
 
