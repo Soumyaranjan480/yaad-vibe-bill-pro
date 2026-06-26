@@ -105,7 +105,7 @@ function Index() {
 
   const reset = () => {
     setCustomerName(""); setMobile(""); setBookingDate(todayISO());
-    setServiceDate(""); setFrom(""); setTo(""); setTotal(""); setAdvance("");
+    setFrom(""); setTo(""); setTotal(""); setAdvance("");
     setBill(null); setError("");
   };
 
