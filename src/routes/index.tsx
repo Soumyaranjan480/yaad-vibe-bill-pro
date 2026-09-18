@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
@@ -98,75 +97,440 @@ function Index() {
   const [bill, setBill] = useState<Bill | null>(null);
   const [error, setError] = useState("");
 
-  const generatePDF = async () => {
-    const invoice = document.getElementById("invoice");
+const generatePDF = async () => {
+  if (!bill) {
+    alert("Please generate the bill first.");
+    return;
+  }
 
-    if (!invoice) {
-      alert("Please generate the bill first.");
-      return;
+  try {
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    const margin = 15;
+    const contentWidth = pageWidth - margin * 2;
+    const formatPDFAmount = (amount: number) => {
+      return `Rs. ${Number(amount || 0).toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`;
+    };
+
+    // ---------------------------------------------------------
+    // COLORS
+    // ---------------------------------------------------------
+    const navy: [number, number, number] = [18, 60, 102];
+    const gold: [number, number, number] = [244, 197, 66];
+    const lightGray: [number, number, number] = [245, 247, 250];
+    const border: [number, number, number] = [220, 220, 220];
+    const dark: [number, number, number] = [30, 30, 30];
+    const gray: [number, number, number] = [105, 105, 105];
+    const white: [number, number, number] = [255, 255, 255];
+
+    // ---------------------------------------------------------
+    // HEADER
+    // ---------------------------------------------------------
+    pdf.setFillColor(...navy);
+    pdf.rect(0, 0, pageWidth, 48, "F");
+
+    // Logo box
+    pdf.setFillColor(...white);
+    pdf.roundedRect(margin, 10, 20, 20, 4, 4, "F");
+
+    pdf.setTextColor(...navy);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(11);
+    pdf.text("YV", margin + 10, 22, { align: "center" });
+
+    // Company name
+    pdf.setTextColor(...white);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(21);
+    pdf.text("YAAD VIBRATOR", margin + 27, 17);
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
+    pdf.setTextColor(220, 235, 250);
+    pdf.text(
+      "Thalakudi, Mangalpur, Jajpur, Odisha - 755011",
+      margin + 27,
+      24
+    );
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(8);
+    pdf.setTextColor(...gold);
+    pdf.text("REGN NO: 676/2023", margin + 27, 30);
+
+    // Booking Receipt badge
+    pdf.setFillColor(...gold);
+    pdf.roundedRect(pageWidth - margin - 43, 10, 43, 8, 4, 4, "F");
+
+    pdf.setTextColor(...dark);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(7);
+    pdf.text(
+      "BOOKING RECEIPT",
+      pageWidth - margin - 21.5,
+      15,
+      { align: "center" }
+    );
+
+    pdf.setTextColor(...white);
+    pdf.setFont("courier", "bold");
+    pdf.setFontSize(9);
+    pdf.text(
+      bill.billNo,
+      pageWidth - margin,
+      25,
+      { align: "right" }
+    );
+
+    pdf.setFont("courier", "normal");
+    pdf.setFontSize(7);
+    pdf.text(
+      bill.generatedAt,
+      pageWidth - margin,
+      31,
+      { align: "right" }
+    );
+
+    // ---------------------------------------------------------
+    // META SECTION
+    // ---------------------------------------------------------
+    let y = 48;
+
+    pdf.setFillColor(...lightGray);
+    pdf.rect(0, y, pageWidth, 25, "F");
+
+    pdf.setDrawColor(...border);
+    pdf.line(0, y + 25, pageWidth, y + 25);
+
+    const metaWidth = contentWidth / 3;
+
+    const drawMeta = (
+      label: string,
+      value: string,
+      x: number
+    ) => {
+      pdf.setTextColor(...gray);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(7);
+      pdf.text(label.toUpperCase(), x, y + 9);
+
+      pdf.setTextColor(...dark);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
+      pdf.text(value, x, y + 16);
+    };
+
+    drawMeta("Bill No.", bill.billNo, margin);
+    drawMeta(
+      "Booking Date",
+      formatDate(bill.bookingDate),
+      margin + metaWidth
+    );
+    drawMeta(
+      "Issued",
+      bill.generatedAt,
+      margin + metaWidth * 2
+    );
+
+    y += 25;
+
+    // ---------------------------------------------------------
+    // CUSTOMER + JOURNEY
+    // ---------------------------------------------------------
+    y += 15;
+
+    const leftX = margin;
+    const rightX = pageWidth / 2 + 5;
+
+    pdf.setTextColor(...gray);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(7);
+
+    pdf.text("BILLED TO", leftX, y);
+    pdf.text("JOURNEY", rightX, y);
+
+    // Customer
+    pdf.setTextColor(...dark);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(13);
+    pdf.text(bill.customerName || "—", leftX, y + 9);
+
+    if (bill.mobile) {
+      pdf.setTextColor(...gray);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.text(`Mobile: ${bill.mobile}`, leftX, y + 16);
     }
 
-    try {
-      const canvas = await html2canvas(invoice, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
+    // Journey
+    pdf.setTextColor(...gray);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(8);
+    pdf.text("From:", rightX, y + 8);
+
+    pdf.setTextColor(...dark);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    pdf.text(bill.from || "—", rightX + 13, y + 8);
+
+    pdf.setTextColor(...gold);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("To:", rightX, y + 16);
+
+    pdf.setTextColor(...dark);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(bill.to || "—", rightX + 13, y + 16);
+
+    y += 32;
+
+    // ---------------------------------------------------------
+    // PAYMENT SUMMARY
+    // ---------------------------------------------------------
+    pdf.setTextColor(...gray);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(7);
+    pdf.text("PAYMENT SUMMARY", margin, y);
+
+    y += 6;
+
+    // Table header
+    pdf.setFillColor(...lightGray);
+    pdf.rect(margin, y, contentWidth, 10, "F");
+
+    pdf.setDrawColor(...border);
+    pdf.rect(margin, y, contentWidth, 10);
+
+    pdf.setTextColor(...gray);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(7);
+
+    pdf.text("DESCRIPTION", margin + 5, y + 6.5);
+    pdf.text(
+      "AMOUNT",
+      pageWidth - margin - 5,
+      y + 6.5,
+      { align: "right" }
+    );
+
+    y += 10;
+
+    // Total row
+    pdf.setDrawColor(...border);
+    pdf.rect(margin, y, contentWidth, 12);
+
+    pdf.setTextColor(...dark);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+
+    pdf.text(
+      "Booking Charges (Total)",
+      margin + 5,
+      y + 7.5
+    );
+
+    pdf.setFont("helvetica", "bold");
+    pdf.text(
+      formatPDFAmount(bill.total),
+      pageWidth - margin - 5,
+      y + 7.5,
+      { align: "right" }
+    );
+
+    y += 12;
+
+    // Advance row
+    pdf.rect(margin, y, contentWidth, 12);
+
+    pdf.setTextColor(...gray);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+
+    pdf.text(
+      "Less: Advance Paid",
+      margin + 5,
+      y + 7.5
+    );
+
+    pdf.setFont("helvetica", "normal");
+    pdf.text(
+      `- ${formatPDFAmount(bill.advance)}`,
+      pageWidth - margin - 5,
+      y + 7.5,
+      { align: "right" }
+    );
+
+    y += 12;
+
+    // Balance row
+    pdf.setFillColor(...navy);
+    pdf.rect(margin, y, contentWidth, 14, "F");
+
+    pdf.setTextColor(...white);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+
+    pdf.text(
+      "BALANCE DUE",
+      margin + 5,
+      y + 9
+    );
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(11);
+
+    pdf.text(
+      formatPDFAmount(bill.balance),
+      pageWidth - margin - 5,
+      y + 9,
+      { align: "right" }
+    );
+
+    y += 21;
+
+    // ---------------------------------------------------------
+    // AMOUNT IN WORDS
+    // ---------------------------------------------------------
+    pdf.setTextColor(...gray);
+    pdf.setFont("helvetica", "italic");
+    pdf.setFontSize(8);
+
+    pdf.text("In words:", margin, y);
+
+    pdf.setTextColor(...dark);
+    pdf.setFont("helvetica", "italic");
+    pdf.text(
+      numberToWords(bill.balance),
+      margin + 18,
+      y
+    );
+
+    // ---------------------------------------------------------
+    // FOOTER
+    // ---------------------------------------------------------
+    y += 13;
+
+    const footerHeight = 42;
+
+    pdf.setFillColor(...lightGray);
+    pdf.rect(0, y, pageWidth, footerHeight, "F");
+
+    pdf.setDrawColor(...border);
+    pdf.line(0, y, pageWidth, y);
+
+    pdf.setTextColor(...dark);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+    pdf.text(
+      "Thank you for choosing Yaad Vibrator.",
+      margin,
+      y + 10
+    );
+
+    pdf.setTextColor(...gray);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7.5);
+
+    pdf.text(
+      "Please carry this receipt during the service.",
+      margin,
+      y + 17
+    );
+
+    pdf.text(
+      "For queries regarding this booking, contact us with the bill number above.",
+      margin,
+      y + 25
+    );
+
+    pdf.text(
+      "This is a computer-generated receipt.",
+      margin,
+      y + 32
+    );
+
+    // Signature
+    const signatureX = pageWidth - margin - 55;
+
+    pdf.setDrawColor(...gray);
+    pdf.setLineDashPattern([2, 2], 0);
+
+    pdf.line(
+      signatureX,
+      y + 25,
+      pageWidth - margin,
+      y + 25
+    );
+
+    pdf.setLineDashPattern([], 0);
+
+    pdf.setTextColor(...gray);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(7);
+
+    pdf.text(
+      "AUTHORIZED SIGNATURE",
+      pageWidth - margin - 27.5,
+      y + 31,
+      { align: "center" }
+    );
+
+    // ---------------------------------------------------------
+    // GOLD BOTTOM LINE
+    // ---------------------------------------------------------
+    pdf.setFillColor(...gold);
+    pdf.rect(0, pageHeight - 5, pageWidth, 5, "F");
+
+    // ---------------------------------------------------------
+    // SAVE / SHARE
+    // ---------------------------------------------------------
+    const fileName = `${bill.billNo || "Yaad-Vibrator-Bill"}.pdf`;
+
+    if (Capacitor.isNativePlatform()) {
+      const base64 = pdf.output("datauristring").split(",")[1];
+
+      await Filesystem.writeFile({
+        path: fileName,
+        data: base64,
+        directory: Directory.Cache,
       });
 
-      const imgData = canvas.toDataURL("image/png");
-
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
+      const fileUri = await Filesystem.getUri({
+        directory: Directory.Cache,
+        path: fileName,
       });
 
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      const fileName = `${bill?.billNo || "Yaad-Vibrator-Bill"}.pdf`;
-
-      // Android / Capacitor
-      if (Capacitor.isNativePlatform()) {
-        const base64 = pdf.output("datauristring").split(",")[1];
-
-        const savedFile = await Filesystem.writeFile({
-          path: fileName,
-          data: base64,
-          directory: Directory.Documents,
-        });
-
-        await Share.share({
-          title: "Yaad Vibrator Bill",
-          text: "Bill PDF",
-          url: savedFile.uri,
-          dialogTitle: "Save or Share Bill",
-        });
-      } else {
-        // Normal browser
-        pdf.save(fileName);
-      }
-    } catch (error) {
-      console.error("PDF generation failed:", error);
-      alert("Unable to generate PDF. Please try again.");
+      await Share.share({
+        title: "Yaad Vibrator Bill",
+        text: "Bill PDF",
+        url: fileUri.uri,
+        dialogTitle: "Save or Share Bill",
+      });
+    } else {
+      pdf.save(fileName);
     }
-  };
+
+  } catch (error) {
+    console.error("PDF generation failed:", error);
+
+    alert(
+      `PDF error: ${
+        error instanceof Error
+          ? error.message
+          : String(error)
+      }`
+    );
+  }
+};
 
   // SSR-safe localStorage access
   useEffect(() => {
@@ -230,8 +594,11 @@ function Index() {
               <CheckCircle2 className="h-3 w-3" /> Live
             </span>
             <span className="hidden text-xs text-muted-foreground md:inline">
-              Thalakudi, Mangalpur, Jajpur, Odisha
+              Thalakudi, Mangalpur, Jajpur, Odisha , Pin -755011
             </span>
+            <span className="mt-1 text-[10px] font-semibold uppercase tracking-wider opacity-90">
+             REGN NO: 676/2023
+             </span>
           </div>
         </div>
       </header>
