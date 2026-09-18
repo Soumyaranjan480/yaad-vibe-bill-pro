@@ -1,9 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Capacitor } from "@capacitor/core";
 import {
   Printer,
   Receipt,
@@ -92,6 +97,76 @@ function Index() {
   const [preview, setPreview] = useState("YV-----");
   const [bill, setBill] = useState<Bill | null>(null);
   const [error, setError] = useState("");
+
+  const generatePDF = async () => {
+    const invoice = document.getElementById("invoice");
+
+    if (!invoice) {
+      alert("Please generate the bill first.");
+      return;
+    }
+
+    try {
+      const canvas = await html2canvas(invoice, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const fileName = `${bill?.billNo || "Yaad-Vibrator-Bill"}.pdf`;
+
+      // Android / Capacitor
+      if (Capacitor.isNativePlatform()) {
+        const base64 = pdf.output("datauristring").split(",")[1];
+
+        const savedFile = await Filesystem.writeFile({
+          path: fileName,
+          data: base64,
+          directory: Directory.Documents,
+        });
+
+        await Share.share({
+          title: "Yaad Vibrator Bill",
+          text: "Bill PDF",
+          url: savedFile.uri,
+          dialogTitle: "Save or Share Bill",
+        });
+      } else {
+        // Normal browser
+        pdf.save(fileName);
+      }
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      alert("Unable to generate PDF. Please try again.");
+    }
+  };
 
   // SSR-safe localStorage access
   useEffect(() => {
@@ -318,7 +393,7 @@ function Index() {
               </div>
               <Button
                 size="lg"
-                onClick={() => window.print()}
+                onClick={generatePDF}
                 className="gap-2 rounded-xl border-0 text-primary-foreground"
                 style={{ background: "var(--gradient-brand)", boxShadow: "var(--shadow-press)" }}
               >
